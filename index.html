@@ -124,6 +124,23 @@ input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);}
 .cbtn.plus{background:var(--ember-ghost);border-color:var(--ember-deep);color:var(--ember);}
 
 
+/* ---------- 30-day subject block ---------- */
+.gcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:14px;border-left:2px solid var(--ember);}
+.gtop{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.gsub{font-size:16px;font-weight:600;line-height:1.2;word-break:break-word;flex:1;min-width:0;}
+.gday{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--ember);flex:none;}
+.gbar{height:3px;border-radius:2px;background:var(--line-soft);overflow:hidden;margin:10px 0 12px;}
+.gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--ember-deep),var(--ember));transition:width .4s ease;}
+.ggrid{display:grid;grid-template-columns:repeat(15,1fr);gap:3px;margin-bottom:13px;}
+.gcell{aspect-ratio:1;border-radius:2px;background:var(--line-soft);}
+.gcell.part{background:#7A5320;} .gcell.full{background:var(--ember);}
+.gcell.now{box-shadow:0 0 0 1.5px var(--text2);}
+.gcell.fut{opacity:.45;}
+.gwatch{display:flex;align-items:center;gap:8px;}
+.gwatch .gn{flex:1;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text2);}
+.gwatch .gn b{color:var(--ember);}
+.gfoot{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--text3);margin-top:11px;display:flex;gap:7px;flex-wrap:wrap;}
+.gdone{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--good);}
 /* ---------- github ---------- */
 .ghcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:14px;border-left:2px solid var(--ghc,var(--text3));}
 .ghtop{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
@@ -377,7 +394,7 @@ function diffDays(a,b){return Math.round((parseYmd(b).getTime()-parseYmd(a).getT
 function shiftKey(dt){const d=new Date(dt);d.setHours(d.getHours()-3);return ymd(d);}
 function todayKey(){return shiftKey(new Date());}
 
-function fresh(){return{version:1,startDate:todayKey(),why:'',tasks:DEFAULTS.map(t=>Object.assign({archived:false},t)),log:{},thoughts:[],health:{},github:{user:'',days:{},fetchedAt:0,error:''},seeded2:true};}
+function fresh(){return{version:1,startDate:todayKey(),why:'',tasks:DEFAULTS.map(t=>Object.assign({archived:false},t)),log:{},thoughts:[],health:{},gate:{subject:'',startDate:'',days:30,target:1,log:{},done:[]},github:{user:'',token:'',days:{},fetchedAt:0,error:''},leet:{solved:{},streak:0,days:{},subs:{},updated:'',error:''},seeded2:true};}
 
 function load(){
   try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&p.tasks&&p.log){S=p;normalize();return;}}}catch(e){}
@@ -392,6 +409,14 @@ function normalize(){
   if(typeof S.github.user!=='string')S.github.user='';
   if(!S.github.days||typeof S.github.days!=='object')S.github.days={};
   if(typeof S.github.token!=='string')S.github.token='';
+  if(!S.leet||typeof S.leet!=='object')S.leet={solved:{},streak:0,days:{},subs:{},updated:'',error:''};
+  if(!S.leet.days||typeof S.leet.days!=='object')S.leet.days={};
+  if(!S.leet.subs||typeof S.leet.subs!=='object')S.leet.subs={};
+  if(!S.gate||typeof S.gate!=='object')S.gate={subject:'',startDate:'',days:30,target:1,log:{},done:[]};
+  if(!S.gate.log||typeof S.gate.log!=='object')S.gate.log={};
+  if(!Array.isArray(S.gate.done))S.gate.done=[];
+  if(typeof S.gate.days!=='number'||S.gate.days<1)S.gate.days=30;
+  if(typeof S.gate.target!=='number'||S.gate.target<1)S.gate.target=1;
   if(!S.seeded2){
     if(!S.tasks.some(t=>/leetcode/i.test(t.title)))S.tasks.push({id:'t_lc',title:'LeetCode — 2 problems',type:'do',target:2,archived:false});
     if(!S.tasks.some(t=>/github/i.test(t.title)))S.tasks.push({id:'t_gh',title:'Push code to GitHub',type:'do',target:1,archived:false});
@@ -504,6 +529,10 @@ function viewToday(){
     h+='<div class="eyebrow">Completed <span class="n">'+fin.length+'</span></div>';
     h+='<div class="tasks">'+fin.map(t=>row(t,key)).join('')+'</div>';
   }
+  h+='<div class="eyebrow">'+(S.gate.subject?'GATE':'30-day subject')+'</div>';
+  h+=gateCard();
+  h+='<div class="eyebrow">LeetCode</div>';
+  h+=leetCard();
   h+='<div class="eyebrow">GitHub</div>';
   h+=ghCard();
   h+='<div class="eyebrow">Health</div>';
@@ -588,6 +617,135 @@ function viewLog(){
    +'</div>'
    +'<div class="eyebrow">All 180 days</div><div class="grid180">'+g+'</div>'
    +'<div class="legend" style="margin-top:12px">Tap any day to see or fix what you logged</div>';
+}
+
+/* ---------- 30-day subject block ---------- */
+function gateDay(){const g=S.gate;return Math.max(1,Math.min(g.days,diffDays(g.startDate,todayKey())+1));}
+function gateWatched(k){return S.gate.log[k]||0;}
+function gateRange(){const g=S.gate,o=[];for(let i=0;i<g.days;i++)o.push(addDays(g.startDate,i));return o;}
+function gateTotals(){
+  const g=S.gate;let vids=0,active=0;
+  gateRange().forEach(k=>{const n=g.log[k]||0;if(n){vids+=n;active++;}});
+  return {vids,active};
+}
+function gateStreak(){
+  const g=S.gate,tk=todayKey();
+  const ok=k=>(g.log[k]||0)>=g.target;
+  let cur=ok(tk)?tk:addDays(tk,-1);
+  if(!ok(cur))return 0;
+  let n=0;
+  while(ok(cur)&&diffDays(g.startDate,cur)>=0){n++;cur=addDays(cur,-1);}
+  return n;
+}
+function gateCard(){
+  const g=S.gate;
+  if(!g.subject)return '<button class="ghconnect" id="gateStart">Pick a subject and commit to it for 30 days &#183; <b>start</b></button>';
+  const tk=todayKey(), day=gateDay(), pct=Math.round(day/g.days*100);
+  const today=gateWatched(tk), t=gateTotals(), st=gateStreak();
+  const over=diffDays(g.startDate,tk)+1>g.days;
+  let grid='';
+  gateRange().forEach(k=>{
+    const n=g.log[k]||0, fut=diffDays(k,tk)<0;
+    grid+='<div class="gcell'+(n>=g.target?' full':(n>0?' part':''))+(k===tk?' now':'')+(fut?' fut':'')+'"></div>';
+  });
+  return '<div class="gcard"><div class="gtop"><span class="gsub">'+esc(g.subject)+'</span>'
+    +'<span class="gday">'+(over?'DONE':'DAY '+String(day).padStart(2,'0')+'/'+g.days)+'</span></div>'
+    +'<div class="gbar"><i style="width:'+pct+'%"></i></div>'
+    +'<div class="ggrid">'+grid+'</div>'
+    +'<div class="gwatch"><span class="gn"><b>'+today+'</b> / '+g.target+' today</span>'
+      +'<button class="cbtn" data-gate="dec">&#8722;</button>'
+      +'<button class="cbtn plus" data-gate="inc">+1</button>'
+      +'<button class="cbtn" data-gate="edit">&#8943;</button></div>'
+    +'<div class="gfoot"><span>streak '+st+'</span><span>&#183;</span><span>'+t.vids+' videos</span>'
+      +'<span>&#183;</span><span>'+t.active+'/'+g.days+' days</span>'
+      +(over?'<span>&#183;</span><span class="gdone">ready to finish</span>':'')+'</div></div>';
+}
+function sheetGate(){
+  const g=S.gate, isNew=!g.subject;
+  let h='<div class="sh-h">'+(isNew?'New 30-day subject':'Subject')+'</div>'
+   +'<div class="field"><label>Subject</label><input type="text" id="g-sub" value="'+esc(g.subject||'')+'" placeholder="e.g. Digital Logic" autocomplete="off"></div>'
+   +'<div class="field"><label>Videos per day</label><input type="number" id="g-tg" min="1" max="20" value="'+g.target+'"></div>'
+   +'<div class="field"><label>Days</label><input type="number" id="g-dy" min="1" max="365" value="'+g.days+'"></div>';
+  if(isNew)h+='<div class="hint">Thirty days on one subject, then the next. Short blocks finish. Open-ended study does not.</div>';
+  h+='<button class="btn pri" id="g-save">'+(isNew?'Start the 30 days':'Save')+'</button>';
+  if(!isNew)h+='<button class="btn gho" id="g-finish">Finish and start a new subject</button>';
+  if(g.done.length){
+    h+='<div class="eyebrow">Finished <span class="n">'+g.done.length+'</span></div><div class="tasks">'
+      +g.done.slice().reverse().map(d=>'<div class="mrow"><span class="tag do">DONE</span><span class="t">'+esc(d.subject)
+        +'<small>'+d.videos+' VIDEOS &#183; '+d.activeDays+'/'+d.days+' DAYS</small></span></div>').join('')+'</div>';
+  }
+  h+='<button class="btn gho" id="g-cancel">Cancel</button>';
+  openSheet(h);
+  $('#g-save').onclick=()=>{
+    const sub=$('#g-sub').value.trim();
+    if(!sub){toast('Name the subject first');return;}
+    if(!g.subject)g.startDate=todayKey();
+    g.subject=sub;
+    g.target=Math.max(1,Math.min(20,parseInt($('#g-tg').value,10)||1));
+    g.days=Math.max(1,Math.min(365,parseInt($('#g-dy').value,10)||30));
+    save();closeSheet();render();toast(isNew?'Day 1. Go.':'Saved');
+  };
+  if(!isNew)$('#g-finish').onclick=()=>{
+    const t=gateTotals();
+    g.done.push({subject:g.subject,startDate:g.startDate,endDate:todayKey(),videos:t.vids,activeDays:t.active,days:g.days});
+    gateRange().forEach(k=>{delete g.log[k];});
+    g.subject='';g.startDate='';
+    save();closeSheet();render();toast('Logged. Pick the next one.');
+  };
+  $('#g-cancel').onclick=closeSheet;
+  if(isNew)setTimeout(()=>$('#g-sub').focus(),320);
+}
+
+/* ---------- leetcode ---------- */
+/* leetcode.com/graphql sends no CORS headers, so the page can never call it.
+   A scheduled Action fetches it and commits leetcode.json, which we read here
+   from our own origin. */
+let leetBusy=false;
+function leetTask(){return S.tasks.find(t=>!t.archived&&/leetcode/i.test(t.title));}
+function leetOn(k){return S.leet.days[k]||0;}
+function leetToday(){return Math.max(leetOn(ymd(new Date())),leetOn(todayKey()));}
+function leetSolved(){return (S.leet.solved&&S.leet.solved.All)||0;}
+async function syncLeet(){
+  if(leetBusy)return;
+  leetBusy=true;
+  const btn=$('#leetRefresh'); if(btn)btn.classList.add('spin');
+  try{
+    const r=await fetch('leetcode.json',{cache:'no-store'});
+    if(r.status===404)throw new Error('Waiting for the first sync');
+    if(!r.ok)throw new Error('Could not load stats');
+    const j=await r.json();
+    S.leet={solved:j.solved||{},streak:j.streak||0,days:j.solvedByDay||{},
+            subs:j.submissions||{},updated:j.updated||'',error:''};
+    const tk=todayKey(), lt=leetTask(), n=leetToday();
+    if(n>0&&lt){const want=Math.min(n,lt.target); if(val(tk,lt.id)<want)setVal(tk,lt.id,want);}
+    save();
+  }catch(e){
+    const m=(e&&e.message)?e.message:'';
+    S.leet.error=(!m||/fetch|network|load failed/i.test(m))?'Offline — showing last sync':m;
+    save();
+  }finally{
+    leetBusy=false;
+    if(tab==='today')render();
+  }
+}
+function leetCard(){
+  const today=leetToday(), total=leetSolved();
+  const anyData=total>0||Object.keys(S.leet.days).length>0;
+  if(!anyData&&S.leet.error)
+    return '<div class="ghcard"><div class="ghfoot" style="margin:0"><span class="err">'+esc(S.leet.error)+'</span></div></div>';
+  const col=today>0?'#4FB286':'#5F6A7A';
+  const t=ymd(new Date());
+  const vals=[];for(let i=13;i>=0;i--){const k=addDays(t,-i);vals.push(S.leet.days[k]||S.leet.subs[k]||0);}
+  return '<div class="ghcard" style="--ghc:'+col+'">'
+   +'<div class="ghtop"><span class="gu">'+(S.leet.streak?'streak '+S.leet.streak:'leetcode')+'</span>'
+     +'<button class="gr'+(leetBusy?' spin':'')+'" id="leetRefresh" aria-label="Refresh"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button></div>'
+   +'<div class="ghnums">'
+     +'<div class="ghn"><div class="v">'+today+'</div><div class="k">Solved today</div></div>'
+     +'<div class="ghn"><div class="v">'+total+'</div><div class="k">Solved total</div></div>'
+   +'</div>'+spark(vals,col)
+   +'<div class="ghfoot"><span>synced hourly</span><span>&#183;</span><span'
+     +(S.leet.error?' class="err"':'')+'>'+esc(S.leet.error||('updated '+(S.leet.updated?ago(Date.parse(S.leet.updated)):'never')))+'</span></div>'
+   +'</div>';
 }
 
 /* ---------- github ---------- */
@@ -1007,9 +1165,19 @@ $('#view').addEventListener('click',e=>{
   if(tab==='today'){
     if(e.target.closest('#whyBtn')){sheetWhy();return;}
     if(e.target.closest('#quickThought')){sheetThought(null);return;}
+    if(e.target.closest('#gateStart')){sheetGate();return;}
+    const gb=e.target.closest('[data-gate]');
+    if(gb){
+      const k=todayKey(),a=gb.dataset.gate;
+      if(a==='edit'){sheetGate();return;}
+      const n=(S.gate.log[k]||0)+(a==='inc'?1:-1);
+      if(n<=0)delete S.gate.log[k];else S.gate.log[k]=Math.min(99,n);
+      save();render();return;
+    }
     if(e.target.closest('[data-health]')){sheetHealth(todayKey());return;}
     if(e.target.closest('#ghConnect')){sheetGitHub();return;}
     if(e.target.closest('#ghRefresh')){syncGitHub(true);return;}
+    if(e.target.closest('#leetRefresh')){syncLeet();return;}
     if(handleTaskTap(e,todayKey())){render();return;}
   }
   if(tab==='log'){
@@ -1050,8 +1218,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
 setInterval(tick,60000);
 
 load();lastKey=todayKey();render();
-syncGitHub(false);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncGitHub(false);});
+syncGitHub(false);syncLeet();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){syncGitHub(false);syncLeet();}});
 })();
 </script>
 <script>

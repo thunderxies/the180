@@ -1,5 +1,5 @@
 /* The 180 — offline shell. Bump CACHE on every deploy. */
-const CACHE = 'the180-v2';
+const CACHE = 'the180-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
                './icon-180.png', './icon-192.png', './icon-512.png'];
 const FONTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -33,6 +33,16 @@ self.addEventListener('fetch', e => {
   }
 
   if (url.origin !== location.origin) return;
+
+  // stats change every few hours — cache-first would pin them forever
+  if (url.pathname.endsWith('/leetcode.json')) {
+    e.respondWith(fetch(req).then(res => {
+      const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(req, copy));
+      return res;
+    }).catch(() => caches.match(req)));
+    return;
+  }
 
   // the page itself: network-first so a redeploy lands, cache as the offline fallback
   if (req.mode === 'navigate') {

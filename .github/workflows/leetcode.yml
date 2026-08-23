@@ -1,0 +1,37 @@
+name: Sync LeetCode
+
+on:
+  schedule:
+    - cron: '23 */3 * * *'   # every 3 hours
+  workflow_dispatch:          # and on demand
+
+permissions:
+  contents: write
+
+concurrency:
+  group: leetcode-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch stats
+        env:
+          LEETCODE_USER: ${{ secrets.LEETCODE_USER }}
+        run: python3 scripts/leetcode.py
+
+      - name: Commit if changed
+        run: |
+          if [ -n "$(git status --porcelain leetcode.json)" ]; then
+            # a bot identity, so these commits never inflate the GitHub card
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add leetcode.json
+            git commit -m "LeetCode sync $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          else
+            echo "no change"
+          fi
