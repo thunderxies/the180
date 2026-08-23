@@ -902,7 +902,7 @@ function sheetHealth(key){
       +'<div class="mhead"><span class="ml">'+m.label+(m.k==='water'?' (glasses)':m.k==='sleep'?' (hours)':'')+'</span><span class="mavg">'+esc(avgTxt)+'</span></div>'
       +'<div class="mctl">'
         +'<button class="mstep" data-m="'+m.k+'" data-d="-1">&#8722;</button>'
-        +'<input type="number" inputmode="decimal" id="mi-'+m.k+'" value="'+(v||'')+'" placeholder="0" step="'+m.step+'" min="0" max="'+m.max+'">'
+        +'<input type="number" inputmode="'+(m.dec?'decimal':'numeric')+'" id="mi-'+m.k+'" value="'+(v||'')+'" placeholder="0" step="'+m.step+'" min="0" max="'+m.max+'">'
         +'<button class="mstep" data-m="'+m.k+'" data-d="1">+</button>'
       +'</div>'+spark(vals,MCOL[m.k])+'</div>';
   }
