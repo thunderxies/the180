@@ -84,7 +84,8 @@ input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);}
 /* ---------- stats ---------- */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px;}
 .stat{background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:12px 10px;text-align:center;}
-.stat .v{font-family:var(--mono);font-weight:700;font-size:23px;line-height:1;letter-spacing:-.02em;}
+.stat .v{font-family:var(--mono);font-weight:700;font-size:23px;line-height:1;letter-spacing:-.02em;min-height:24px;display:flex;align-items:center;justify-content:center;}
+.stat .v.vtext{font-size:16px;letter-spacing:.02em;}
 .stat .k{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-top:7px;}
 .stat.ember .v{color:var(--ember);} .stat.good .v{color:var(--good);} .stat.plain .v{color:var(--text);}
 .stat.dead .v{color:var(--text3);}
@@ -189,9 +190,8 @@ button.htile:active{transform:scale(.97);}
 .capture:active{transform:scale(.98);}
 .capture svg{width:18px;height:18px;stroke:var(--ember);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;}
 .capture span{font-size:14px;font-weight:500;color:var(--text2);}
-.filters{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-.filters::-webkit-scrollbar{display:none;}
-.fchip{flex:none;display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:0 14px;border-radius:20px;border:1px solid var(--line);color:var(--text3);white-space:nowrap;transition:.15s;}
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 2px;}
+.fchip{flex:none;display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:0 12px;border-radius:20px;border:1px solid var(--line);color:var(--text3);white-space:nowrap;transition:.15s;}
 .fchip.on{background:var(--surface2);border-color:var(--text3);color:var(--text);}
 .tcard{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:13px 14px;display:block;transition:.15s;border-left:2px solid var(--line);}
 .tcard[role=button]:active{transform:scale(.99);}
@@ -973,7 +973,7 @@ function viewMind(){
   h+='<div class="stats" style="margin-top:12px">'
    +'<div class="stat plain"><div class="v">'+all.length+'</div><div class="k">Logged</div></div>'
    +'<div class="stat '+(answered?'good':'dead')+'"><div class="v">'+answered+'</div><div class="k">Answered</div></div>'
-   +'<div class="stat '+(wk.length?'ember':'dead')+'"><div class="v" style="font-size:15px;padding:4px 0">'+esc(top)+'</div><div class="k">This week</div></div>'
+   +'<div class="stat '+(wk.length?'ember':'dead')+'"><div class="v vtext">'+esc(top)+'</div><div class="k">This week</div></div>'
    +'</div>';
   h+='<div class="hint" style="margin:16px 0 12px">A thought is not a fact and it is not an order. Catch it, name it, and write the answer you would give a friend who said it out loud.</div>';
 
