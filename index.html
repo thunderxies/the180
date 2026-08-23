@@ -654,7 +654,8 @@ async function syncGitHub(force){
     if(ghTodayCount()>0&&gt&&val(tk,gt.id)<gt.target)setVal(tk,gt.id,gt.target);
     save();
   }catch(e){
-    S.github.error=(e&&e.message)?e.message:'Could not reach GitHub';
+    const m=(e&&e.message)?e.message:'';
+    S.github.error=(!m||/fetch|network|load failed/i.test(m))?'Offline — showing last sync':m;
     save();
   }finally{
     ghBusy=false;
