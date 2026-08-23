@@ -35,7 +35,8 @@ body{
   -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
   -webkit-user-select:none; user-select:none;
 }
-button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer;font-size:inherit;}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer;font-size:inherit;-webkit-appearance:none;appearance:none;}
+[role=button]{cursor:pointer;}
 input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);}
 :focus-visible{outline:2px solid var(--ember);outline-offset:2px;border-radius:6px;}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
@@ -193,7 +194,7 @@ button.htile:active{transform:scale(.97);}
 .fchip{flex:none;display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:0 14px;border-radius:20px;border:1px solid var(--line);color:var(--text3);white-space:nowrap;transition:.15s;}
 .fchip.on{background:var(--surface2);border-color:var(--text3);color:var(--text);}
 .tcard{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:13px 14px;display:block;transition:.15s;border-left:2px solid var(--line);}
-button.tcard:active{transform:scale(.99);}
+.tcard[role=button]:active{transform:scale(.99);}
 .thead{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
 .tg{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;padding:3px 7px;border-radius:5px;text-transform:uppercase;}
 .ttime{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em;margin-left:auto;}
@@ -201,14 +202,16 @@ button.tcard:active{transform:scale(.99);}
 .tans{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13.5px;line-height:1.5;color:var(--text2);white-space:pre-wrap;word-break:break-word;display:flex;gap:8px;}
 .tans i{font-style:normal;color:var(--good);flex:none;}
 .tunans{margin-top:10px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--ember);opacity:.75;}
-.tg-urge,.tcard.k-urge{--tc:#E2574C;} .tg-doubt,.tcard.k-doubt{--tc:#8B85D6;}
-.tg-anger,.tcard.k-anger{--tc:#C8613A;} .tg-worry,.tcard.k-worry{--tc:#5FA8C7;}
-.tg-clear,.tcard.k-clear{--tc:#4FB286;}
-.tg{background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc);}
+.tg-urge,.tcard.k-urge{--tc:#E2574C;--tcbg:rgba(226,87,76,.18);}
+.tg-doubt,.tcard.k-doubt{--tc:#8B85D6;--tcbg:rgba(139,133,214,.18);}
+.tg-anger,.tcard.k-anger{--tc:#C8613A;--tcbg:rgba(200,97,58,.18);}
+.tg-worry,.tcard.k-worry{--tc:#5FA8C7;--tcbg:rgba(95,168,199,.18);}
+.tg-clear,.tcard.k-clear{--tc:#4FB286;--tcbg:rgba(79,178,134,.18);}
+.tg{background:var(--tcbg);color:var(--tc);}
 .tcard{border-left-color:var(--tc,var(--line));}
 .tagpick{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
 .tagpick button{padding:11px 4px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);}
-.tagpick button.on{background:color-mix(in srgb,var(--tc) 20%,transparent);border-color:var(--tc);color:var(--tc);}
+.tagpick button.on{background:var(--tcbg);border-color:var(--tc);color:var(--tc);}
 .restart{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line-soft);border-left:2px solid var(--good);font-size:13px;line-height:1.45;color:var(--text2);}
 .empty{padding:26px 16px;text-align:center;color:var(--text3);font-size:13.5px;border:1px dashed var(--line);border-radius:12px;}
 
@@ -948,12 +951,12 @@ function dayLabel(k){
 function thoughtCard(t,plain){
   const tag=t.tag,time=new Date(t.ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
   const ans=(t.answer||'').trim();
-  return '<'+(plain?'div':'button')+' class="tcard k-'+tag+'"'+(plain?'':' data-thought="'+t.id+'"')+'>'
+  return '<div class="tcard k-'+tag+'"'+(plain?'':' role="button" tabindex="0" data-thought="'+t.id+'"')+'>'
     +'<div class="thead"><span class="tg tg-'+tag+'">'+tagLabel(tag)+'</span><span class="ttime">'+esc(time)+'</span></div>'
     +'<div class="tbody">'+esc(t.text)+'</div>'
     +(ans?'<div class="tans"><i>&#8627;</i><span>'+esc(ans)+'</span></div>'
         :((plain||tag==='clear')?'':'<div class="tunans">Not answered yet &#183; tap to answer</div>'))
-    +'</'+(plain?'div':'button')+'>';
+    +'</div>';
 }
 function viewMind(){
   const all=S.thoughts.slice().sort((a,b)=>b.ts-a.ts);
@@ -983,13 +986,17 @@ function viewMind(){
    +'</div>';
   const list=tFilter==='all'?all:all.filter(t=>t.tag===tFilter);
   if(!list.length)return h+'<div class="empty" style="margin-top:16px">Nothing logged under '+esc(tagLabel(tFilter))+' yet.</div>';
-  let last=null;
-  h+='<div class="tasks" style="margin-top:4px">';
+  let last=null, open=false;
   list.forEach(t=>{
-    if(t.day!==last){last=t.day;h+='</div><div class="eyebrow">'+esc(dayLabel(t.day))+'</div><div class="tasks">';}
+    if(t.day!==last){
+      if(open)h+='</div>';
+      last=t.day;
+      h+='<div class="eyebrow">'+esc(dayLabel(t.day))+'</div><div class="tasks">';
+      open=true;
+    }
     h+=thoughtCard(t,false);
   });
-  return h+'</div>';
+  return h+(open?'</div>':'');
 }
 
 function sheetThought(id){
@@ -1213,6 +1220,12 @@ document.querySelector('.tabbar').addEventListener('click',e=>{
   if(b.dataset.tab==='log')calCursor=null;
   if(b.dataset.tab==='mind')tFilter='all';
   tab=b.dataset.tab;render(true);
+});
+document.addEventListener('keydown',e=>{
+  const el=e.target;
+  if((e.key==='Enter'||e.key===' ')&&el&&el.getAttribute&&el.getAttribute('role')==='button'){
+    e.preventDefault();el.click();
+  }
 });
 $('#gear').onclick=sheetSettings;
 $('#scrim').onclick=closeSheet;
