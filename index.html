@@ -1158,11 +1158,13 @@ function handleTaskTap(e,key){
   return true;
 }
 
-function render(){
+function render(toTop){
   [].forEach.call(document.querySelectorAll('.tab'),el=>el.classList.toggle('on',el.dataset.tab===tab));
+  const y=toTop?0:window.scrollY;
   const v=$('#view');
   v.innerHTML=tab==='today'?viewToday():tab==='log'?viewLog():tab==='mind'?viewMind():viewTasks();
-  window.scrollTo(0,0);
+  /* tapping +1 must not fling the page back to the top */
+  window.scrollTo(0,y);
 }
 
 $('#view').addEventListener('click',e=>{
@@ -1210,7 +1212,7 @@ document.querySelector('.tabbar').addEventListener('click',e=>{
   const b=e.target.closest('.tab');if(!b)return;
   if(b.dataset.tab==='log')calCursor=null;
   if(b.dataset.tab==='mind')tFilter='all';
-  tab=b.dataset.tab;render();
+  tab=b.dataset.tab;render(true);
 });
 $('#gear').onclick=sheetSettings;
 $('#scrim').onclick=closeSheet;
