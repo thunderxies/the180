@@ -111,7 +111,7 @@ input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);}
 .task.done .badge{background:var(--good-ghost);} .task.done .badge svg{stroke:var(--good);}
 
 .guardbtns{display:flex;gap:6px;margin-top:9px;}
-.gb{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:11px 15px;border-radius:9px;border:1px solid var(--line);color:var(--text3);transition:.15s;}
+.gb{display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:0 15px;border-radius:9px;border:1px solid var(--line);color:var(--text3);transition:.15s;}
 .gb:active{transform:scale(.95);}
 .gb.on-keep{background:var(--good);border-color:var(--good);color:#08120E;}
 .gb.on-slip{background:var(--guard);border-color:var(--guard);color:#1A0908;}
@@ -122,7 +122,7 @@ input,textarea,select{font-family:inherit;font-size:16px;color:var(--text);}
 .counter .crow{display:flex;align-items:center;gap:7px;}
 .counter .num{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text2);flex:1;}
 .counter .num b{color:var(--ember);font-weight:700;}
-.cbtn{font-family:var(--mono);font-size:12px;font-weight:600;min-width:46px;height:40px;padding:0 10px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);color:var(--text2);transition:.15s;}
+.cbtn{font-family:var(--mono);font-size:12px;font-weight:600;min-width:46px;height:44px;padding:0 10px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);color:var(--text2);transition:.15s;}
 .cbtn:active{transform:scale(.92);}
 .cbtn.plus{background:var(--ember-ghost);border-color:var(--ember-deep);color:var(--ember);}
 
@@ -190,7 +190,7 @@ button.htile:active{transform:scale(.97);}
 .capture span{font-size:14px;font-weight:500;color:var(--text2);}
 .filters{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .filters::-webkit-scrollbar{display:none;}
-.fchip{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:11px 14px;border-radius:20px;border:1px solid var(--line);color:var(--text3);white-space:nowrap;transition:.15s;}
+.fchip{flex:none;display:inline-flex;align-items:center;min-height:44px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:0 14px;border-radius:20px;border:1px solid var(--line);color:var(--text3);white-space:nowrap;transition:.15s;}
 .fchip.on{background:var(--surface2);border-color:var(--text3);color:var(--text);}
 .tcard{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:13px 14px;display:block;transition:.15s;border-left:2px solid var(--line);}
 button.tcard:active{transform:scale(.99);}
