@@ -261,6 +261,10 @@ button.htile:active{transform:scale(.97);}
 .mrow .t small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--text3);margin-top:2px;letter-spacing:.05em;}
 .addbtn{width:100%;margin-top:12px;padding:15px;border-radius:12px;border:1px dashed var(--ember-deep);color:var(--ember);font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;background:rgba(242,163,60,.05);transition:.15s;}
 .addbtn:active{transform:scale(.98);}
+.mrow .grip{flex:none;width:22px;height:30px;margin:-4px 0 -4px -5px;display:grid;place-items:center;color:var(--text3);touch-action:none;cursor:grab;}
+.mrow .grip svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;}
+.mrow.dragging{border-color:var(--ember-deep);box-shadow:0 12px 26px #05070Acc;position:relative;z-index:5;}
+.mrow.dragging .grip{cursor:grabbing;color:var(--ember);}
 
 /* ---------- tabs ---------- */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#0D1014EE;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line-soft);padding-bottom:var(--safe-b);}
@@ -437,6 +441,17 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast(
 /* ---------- model helpers ---------- */
 function active(){return S.tasks.filter(t=>!t.archived);}
 function byId(id){return S.tasks.find(t=>t.id===id);}
+/* delete removes the task and every value it ever logged; retiring only hides it */
+function deleteTask(id){
+  S.tasks=S.tasks.filter(t=>t.id!==id);
+  Object.keys(S.log).forEach(k=>{
+    if(S.log[k]&&Object.prototype.hasOwnProperty.call(S.log[k],id)){
+      delete S.log[k][id];
+      if(!Object.keys(S.log[k]).length)delete S.log[k];
+    }
+  });
+  save();
+}
 function val(key,id){const l=S.log[key];return l&&typeof l[id]==='number'?l[id]:0;}
 function setVal(key,id,v){if(!S.log[key])S.log[key]={};if(v===0)delete S.log[key][id];else S.log[key][id]=v;if(!Object.keys(S.log[key]).length)delete S.log[key];save();}
 function isDone(t,v){return v>=t.target;}
@@ -1033,13 +1048,14 @@ function sheetThought(id){
 function viewTasks(){
   const a=active(), arch=S.tasks.filter(t=>t.archived);
   let h='<div class="eyebrow">My tasks <span class="n">'+a.length+'</span></div><div class="tasks">';
-  h+=a.length?a.map(t=>'<button class="mrow" data-edit="'+t.id+'">'
+  h+=a.length?a.map(t=>'<button class="mrow" data-edit="'+t.id+'" data-id="'+t.id+'">'
+      +'<span class="grip" data-grip aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></svg></span>'
       +'<span class="tag '+t.type+'">'+(t.type==='do'?'DO':'AVOID')+'</span>'
       +'<span class="t">'+esc(t.title)+(t.target>1?'<small>TARGET '+t.target+' PER DAY</small>':'')+'</span>'
       +'<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--text3);fill:none;stroke-width:1.8;flex:none"><path d="M9 18l6-6-6-6"/></svg>'
       +'</button>').join(''):'<div class="empty">No tasks yet. Add the first one.</div>';
   h+='</div><button class="addbtn" id="addTask">+ Add a task</button>';
-  h+='<div class="hint" style="margin-top:14px">A <b>DO</b> task is something you tick off. An <b>AVOID</b> task is a habit you are cutting — each day you mark whether you held or slipped. Give a task a daily target above 1 and it becomes a counter.</div>';
+  h+='<div class="hint" style="margin-top:14px">A <b>DO</b> task is something you tick off. An <b>AVOID</b> task is a habit you are cutting — each day you mark whether you held or slipped. Give a task a daily target above 1 and it becomes a counter. Drag a task by the handle on its left to change the order they appear in.</div>';
   if(arch.length){
     h+='<div class="eyebrow">Retired <span class="n">'+arch.length+'</span></div><div class="tasks">'
       +arch.map(t=>'<button class="mrow" data-edit="'+t.id+'" style="opacity:.55"><span class="tag '+t.type+'">'+(t.type==='do'?'DO':'AVOID')+'</span><span class="t">'+esc(t.title)+'</span></button>').join('')
@@ -1062,7 +1078,9 @@ function sheetTask(id){
    +'<div class="field" id="f-tgtwrap" style="'+(t.type==='avoid'?'display:none':'')+'"><label>Times per day</label><input type="number" id="f-target" min="1" max="1000" value="'+t.target+'"></div>'
    +'<div class="hint">Leave it at 1 for a simple tick. Set 100 and you get a counter with +1 and +10 buttons.</div>'
    +'<button class="btn pri" id="f-save">Save</button>'
-   +(id?'<button class="btn dan" id="f-arch">'+(t.archived?'Bring back':'Retire this task')+'</button>':'')
+   +(id?'<button class="btn gho" id="f-arch">'+(t.archived?'Bring back':'Retire this task')+'</button>':'')
+   +(id?'<button class="btn dan" id="f-del">Delete for good</button>':'')
+   +(id?'<div class="hint" style="margin:10px 0 0">Retiring pulls a task out of your daily list but keeps its history in the log. Deleting wipes the task and every tick it ever recorded, and that cannot be undone.</div>':'')
    +'<button class="btn gho" id="f-cancel">Cancel</button>');
   let type=t.type;
   $('#f-type').onclick=e=>{const b=e.target.closest('button');if(!b)return;type=b.dataset.v;
@@ -1077,6 +1095,9 @@ function sheetTask(id){
     save();closeSheet();render();toast(id?'Task updated':'Task added');
   };
   if(id)$('#f-arch').onclick=()=>{const o=byId(id);o.archived=!o.archived;save();closeSheet();render();toast(o.archived?'Retired':'Back in your daily list');};
+  if(id)$('#f-del').onclick=()=>{
+    $('#f-del').textContent='Tap again to delete for good';
+    $('#f-del').onclick=()=>{deleteTask(id);closeSheet();render();toast('Task deleted');};};
   $('#f-cancel').onclick=closeSheet;
   if(!id)setTimeout(()=>$('#f-title').focus(),320);
 }
@@ -1151,6 +1172,73 @@ function sheetSettings(){
   $('#s-close').onclick=closeSheet;
 }
 
+/* ---------- reorder by dragging ---------- */
+let drag=null, dragScroll=0, dragRaf=0;
+
+function idsOf(list){return [].map.call(list.querySelectorAll('.mrow'),el=>el.dataset.id);}
+
+function saveOrder(list){
+  const ids=idsOf(list);
+  const moved=ids.map(id=>byId(id)).filter(Boolean);
+  S.tasks=moved.concat(S.tasks.filter(t=>ids.indexOf(t.id)<0));
+  save();
+}
+
+/* clear the transform, measure where the row now sits, then offset it back under the finger */
+function dragPlace(y){
+  drag.row.style.transform='';
+  const top=drag.row.getBoundingClientRect().top;
+  drag.row.style.transform='translateY('+(y-drag.offset-top)+'px)';
+}
+
+function dragOver(x,y){
+  const under=document.elementFromPoint(x,y);
+  const target=under&&under.closest?under.closest('.mrow'):null;
+  if(!target||target===drag.row||target.parentNode!==drag.list)return;
+  const r=target.getBoundingClientRect();
+  drag.list.insertBefore(drag.row,y<r.top+r.height/2?target:target.nextSibling);
+}
+
+function dragTick(){
+  if(!drag){dragRaf=0;return;}
+  dragRaf=requestAnimationFrame(dragTick);
+  if(!dragScroll)return;
+  const before=window.scrollY;
+  window.scrollBy(0,dragScroll);
+  if(window.scrollY!==before){dragPlace(drag.y);dragOver(drag.x,drag.y);}
+}
+
+function startDrag(e,grip){
+  const row=grip.closest('.mrow'), list=row&&row.parentNode;
+  if(!row||!list)return;
+  e.preventDefault();
+  drag={row,list,grip,x:e.clientX,y:e.clientY,offset:e.clientY-row.getBoundingClientRect().top,ids:idsOf(list)};
+  row.classList.add('dragging');
+  row.style.pointerEvents='none';
+  try{grip.setPointerCapture(e.pointerId);}catch(err){}
+  dragTick();
+}
+
+function moveDrag(e){
+  if(!drag)return;
+  e.preventDefault();
+  drag.x=e.clientX;drag.y=e.clientY;
+  dragPlace(e.clientY);
+  dragOver(e.clientX,e.clientY);
+  const top=e.clientY, bot=window.innerHeight-e.clientY;
+  dragScroll=top<90?-Math.min(14,(90-top)/4):bot<120?Math.min(14,(120-bot)/4):0;
+}
+
+function endDrag(e){
+  if(!drag)return;
+  const d=drag;drag=null;dragScroll=0;
+  d.row.style.transform='';
+  d.row.style.pointerEvents='';
+  d.row.classList.remove('dragging');
+  try{d.grip.releasePointerCapture(e.pointerId);}catch(err){}
+  if(idsOf(d.list).join()!==d.ids.join()){saveOrder(d.list);render();toast('Order saved');}
+}
+
 /* ---------- interaction ---------- */
 function handleTaskTap(e,key){
   const b=e.target.closest('[data-act]');if(!b)return false;
@@ -1209,11 +1297,21 @@ $('#view').addEventListener('click',e=>{
     if(c){sheetThought(c.dataset.thought);return;}
   }
   if(tab==='tasks'){
+    if(e.target.closest('[data-grip]'))return;
     if(e.target.closest('#addTask')){sheetTask(null);return;}
     const ed=e.target.closest('[data-edit]');
     if(ed){sheetTask(ed.dataset.edit);return;}
   }
 });
+
+$('#view').addEventListener('pointerdown',e=>{
+  if(tab!=='tasks'||e.button)return;
+  const g=e.target.closest('[data-grip]');
+  if(g)startDrag(e,g);
+});
+$('#view').addEventListener('pointermove',moveDrag);
+$('#view').addEventListener('pointerup',endDrag);
+$('#view').addEventListener('pointercancel',endDrag);
 
 document.querySelector('.tabbar').addEventListener('click',e=>{
   const b=e.target.closest('.tab');if(!b)return;
