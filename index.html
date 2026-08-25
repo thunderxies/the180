@@ -247,6 +247,29 @@ button.htile:active{transform:scale(.97);}
 
 .msum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px;}
 
+/* ---------- patterns ---------- */
+.reading{margin:12px 0 4px;padding:13px 15px;border-radius:10px;background:var(--surface);border:1px solid var(--line-soft);border-left:2px solid var(--ember);font-size:13.5px;line-height:1.5;color:var(--text2);}
+.reading b{color:var(--text);font-weight:600;}
+.pbars{display:flex;flex-direction:column;gap:11px;}
+.pbar{display:block;width:100%;text-align:left;background:none;}
+.pl{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+.pl .pn{flex:1;min-width:0;font-size:13px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pl .pv{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text3);font-variant-numeric:tabular-nums;}
+.pbar.weak .pn,.pbar.weak .pv{color:var(--text);}
+.ptrack{height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden;}
+.ptrack i{display:block;height:100%;border-radius:3px;background:var(--ember);transition:width .35s ease;}
+.pbar.weak .ptrack i{background:var(--guard);}
+.pslip{font-family:var(--mono);font-size:10px;color:var(--guard);letter-spacing:.06em;margin-top:5px;}
+.wdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;}
+.wd{display:flex;flex-direction:column;align-items:center;gap:7px;}
+.wt{width:100%;max-width:26px;height:58px;margin:0 auto;display:flex;align-items:flex-end;background:var(--line-soft);border-radius:3px;overflow:hidden;}
+.wt i{display:block;width:100%;border-radius:3px;background:var(--ember);transition:height .35s ease;}
+.wd.weak .wt i{background:var(--guard);}
+.wd.none .wt{opacity:.4;}
+.wd .wl{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:.06em;}
+.wd.weak .wl{color:var(--guard);}
+.wd .wv{font-family:var(--mono);font-size:9.5px;color:var(--text3);height:12px;font-variant-numeric:tabular-nums;}
+.wd.weak .wv{color:var(--guard);}
 .grid180{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;}
 .g{aspect-ratio:1;border-radius:2px;background:var(--line-soft);}
 .g.lv1{background:#3B2E18;} .g.lv2{background:#63481C;} .g.lv3{background:#A87422;} .g.lv4{background:var(--ember);}
@@ -652,7 +675,8 @@ function viewLog(){
      +'<div class="stat good"><div class="v">'+mClean+'</div><div class="k">Clean days</div></div>'
    +'</div>'
    +'<div class="eyebrow">All 180 days</div><div class="grid180">'+g+'</div>'
-   +'<div class="legend" style="margin-top:12px">Tap any day to see or fix what you logged</div>';
+   +'<div class="legend" style="margin-top:12px">Tap any day to see or fix what you logged</div>'
+   +viewPatterns();
 }
 
 /* ---------- 30-day subject block ---------- */
@@ -892,6 +916,66 @@ function sheetGitHub(){
     S.github={user:'',token:'',days:{},fetchedAt:0,error:''};save();closeSheet();render();toast('Disconnected');};
   $('#gh-cancel').onclick=closeSheet;
   setTimeout(()=>$('#gh-u').focus(),320);
+}
+
+/* ---------- patterns ---------- */
+/* A 30-day trailing window, clipped to days that have actually happened, so an
+   early run is not judged against days before day 1. */
+function patternDays(){
+  const tk=todayKey(), span=Math.min(30,diffDays(S.startDate,tk)+1), out=[];
+  for(let i=span-1;i>=0;i--){const k=addDays(tk,-i);if(diffDays(S.startDate,k)>=0)out.push(k);}
+  return out;
+}
+function taskRate(t,days){
+  if(!days.length)return 0;
+  let n=0;days.forEach(k=>{if(isDone(t,val(k,t.id)))n++;});
+  return n/days.length;
+}
+function taskSlips(t,days){let n=0;days.forEach(k=>{if(val(k,t.id)===-1)n++;});return n;}
+function weekdayRates(days){
+  const sum=[0,0,0,0,0,0,0],cnt=[0,0,0,0,0,0,0];
+  days.forEach(k=>{const d=parseYmd(k).getDay();sum[d]+=ratio(k);cnt[d]++;});
+  return sum.map((v,i)=>cnt[i]?v/cnt[i]:-1);
+}
+const WDL=['S','M','T','W','T','F','S'], WDN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function pct(r){return Math.round(r*100);}
+
+function viewPatterns(){
+  const days=patternDays(), a=active();
+  let h='<div class="eyebrow">Patterns <span class="n">'+days.length+'d</span></div>';
+  if(!a.length)return h+'<div class="empty">No tasks yet, so there is nothing to read.</div>';
+  if(days.length<7||!everLogged())
+    return h+'<div class="empty">Not enough logged yet. Once you have a week behind you, this shows which habit is costing you days and which day of the week you tend to lose.</div>';
+
+  const rows=a.map(t=>({t:t,rate:taskRate(t,days),slips:taskSlips(t,days)}))
+              .sort((x,y)=>x.rate-y.rate||x.t.title.localeCompare(y.t.title));
+  const worst=rows[0], best=rows[rows.length-1];
+  const wd=weekdayRates(days);
+  let lo=-1,hi=-1;
+  wd.forEach((v,i)=>{if(v<0)return;if(lo<0||v<wd[lo])lo=i;if(hi<0||v>wd[hi])hi=i;});
+
+  /* one honest sentence, then the bars that back it up */
+  let read='<b>'+esc(worst.t.title)+'</b> is your weakest link at <b>'+pct(worst.rate)+'%</b>';
+  read+=rows.length>1?', against <b>'+pct(best.rate)+'%</b> on '+esc(best.t.title)+'.':'.';
+  if(lo>=0&&hi>=0&&lo!==hi&&pct(wd[hi])-pct(wd[lo])>=10)
+    read+=' '+WDN[lo]+'s are where it breaks \u2014 <b>'+pct(wd[lo])+'%</b> of the list done, against <b>'+pct(wd[hi])+'%</b> on '+WDN[hi]+'s.';
+  h+='<div class="reading">'+read+'</div>';
+
+  h+='<div class="eyebrow">By task <span class="n">worst first</span></div><div class="pbars">';
+  h+=rows.map(r=>'<button class="pbar'+(r===worst?' weak':'')+'" data-pt="'+r.t.id+'">'
+    +'<div class="pl"><span class="pn">'+esc(r.t.title)+'</span><span class="pv">'+pct(r.rate)+'%</span></div>'
+    +'<div class="ptrack"><i style="width:'+Math.max(pct(r.rate),1.5)+'%"></i></div>'
+    +(r.slips?'<div class="pslip">'+r.slips+' slip'+(r.slips>1?'s':'')+' logged</div>':'')
+    +'</button>').join('');
+  h+='</div><div class="hint" style="margin-top:12px">Share of the last '+days.length+' days each task was finished. Tap one to edit it.</div>';
+
+  h+='<div class="eyebrow">By weekday</div><div class="wdays">';
+  h+=wd.map((v,i)=>'<div class="wd'+(v<0?' none':'')+(i===lo&&v>=0&&lo!==hi?' weak':'')+'">'
+    +'<div class="wv">'+(i===lo&&v>=0&&lo!==hi?pct(v)+'%':'')+'</div>'
+    +'<div class="wt"><i style="height:'+(v<0?0:Math.max(pct(v),2))+'%"></i></div>'
+    +'<div class="wl">'+WDL[i]+'</div></div>').join('');
+  h+='</div><div class="hint" style="margin-top:12px">Average share of the day\u2019s list you finish, by day of the week.</div>';
+  return h;
 }
 
 /* ---------- health ---------- */
@@ -1325,6 +1409,8 @@ $('#view').addEventListener('click',e=>{
     if(nav){let m=calCursor.m+parseInt(nav.dataset.nav,10),y=calCursor.y;
       if(m<0){m=11;y--;} if(m>11){m=0;y++;}
       calCursor={y,m};render();return;}
+    const p=e.target.closest('[data-pt]');
+    if(p){sheetTask(p.dataset.pt);return;}
     const c=e.target.closest('[data-day]');
     if(c){sheetDay(c.dataset.day);return;}
   }

@@ -1,5 +1,5 @@
 /* The 180 — offline shell. Bump CACHE on every deploy. */
-const CACHE = 'the180-v10';
+const CACHE = 'the180-v11';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
                './icon-180.png', './icon-192.png', './icon-512.png'];
 const FONTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
