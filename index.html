@@ -458,6 +458,20 @@ function isDone(t,v){return v>=t.target;}
 function doneOn(key){const a=active();let n=0;a.forEach(t=>{if(isDone(t,val(key,t.id)))n++;});return n;}
 function ratio(key){const a=active();return a.length?doneOn(key)/a.length:0;}
 
+/* Home-screen badge. iOS paints this on the installed icon, so the number of
+   tasks still open is readable without launching the app. The page can only
+   refresh it while it is running, so we set it on every render and on the way
+   out — a day that rolls over untouched keeps yesterday's number until the
+   app is next opened. */
+function badgeOn(){return typeof navigator!=='undefined'&&'setAppBadge' in navigator;}
+function syncBadge(){
+  if(!badgeOn())return;
+  try{
+    const left=active().length-doneOn(todayKey());
+    if(left>0)navigator.setAppBadge(left);else navigator.clearAppBadge();
+  }catch(e){}
+}
+
 function dayCounts(key){const a=active();if(!a.length)return false;return doneOn(key)*2>=a.length;}
 function dayClean(key){
   const av=active().filter(t=>t.type==='avoid');
@@ -1133,6 +1147,17 @@ function sheetWhy(){
   setTimeout(()=>$('#w-txt').focus(),320);
 }
 
+function badgeHint(){
+  if(!badgeOn())return 'This browser cannot badge the app icon. On an iPhone, add The 180 to your Home Screen and open it from there.';
+  return 'Shows the number of tasks still open on the app icon, so you can see where you stand without opening it. It refreshes while the app is running, so a new day still reads yesterday\u2019s number until you open it.';
+}
+function badgeLabel(){
+  if(typeof Notification==='undefined')return 'Refresh the badge';
+  if(Notification.permission==='granted')return 'Badge is on \u00b7 refresh it';
+  if(Notification.permission==='denied')return 'Blocked in iOS Settings';
+  return 'Turn on the badge';
+}
+
 function sheetSettings(){
   const di=dayIndex();
   openSheet('<div class="sh-h">Settings</div>'
@@ -1140,6 +1165,9 @@ function sheetSettings(){
    +'<div class="hint">You are on day '+di+'. Changing this moves the whole 180-day window — your logs stay where they are.</div>'
    +'<div class="eyebrow" style="margin-top:4px">GitHub</div>'
    +'<button class="btn gho" id="s-gh" style="margin-top:0">'+(S.github.user?'Connected as @'+esc(S.github.user):'Connect GitHub')+'</button>'
+   +'<div class="eyebrow" style="margin-top:4px">Home screen</div>'
+   +'<div class="hint" style="margin-top:2px">'+badgeHint()+'</div>'
+   +(badgeOn()?'<button class="btn gho" id="s-badge" style="margin-top:0">'+badgeLabel()+'</button>':'')
    +'<div class="eyebrow" style="margin-top:4px">Backup</div>'
    +'<div class="hint" style="margin-top:2px">Everything lives on this phone only. Copy your backup somewhere safe once a month — losing six months of logs is exactly the kind of thing that ends a streak.</div>'
    +'<button class="btn gho" id="s-exp" style="margin-top:0">Copy my data</button>'
@@ -1148,6 +1176,16 @@ function sheetSettings(){
    +'<button class="btn dan" id="s-reset">Erase everything and start over</button>'
    +'<button class="btn gho" id="s-close">Close</button>');
   $('#s-start').onchange=e=>{if(e.target.value){S.startDate=e.target.value;save();render();toast('Day 1 moved');}};
+  if($('#s-badge'))$('#s-badge').onclick=()=>{
+    if(typeof Notification==='undefined'){syncBadge();toast('Badge updated');return;}
+    if(Notification.permission==='granted'){syncBadge();toast('Badge updated');return;}
+    if(Notification.permission==='denied'){toast('Allow notifications for The 180 in iOS Settings');return;}
+    Notification.requestPermission().then(p=>{
+      syncBadge();
+      toast(p==='granted'?'Badge is on':'Badge needs notification permission');
+      closeSheet();
+    }).catch(()=>toast('Could not turn the badge on'));
+  };
   $('#s-exp').onclick=()=>{
     const safe=JSON.parse(JSON.stringify(S));
     if(safe.github)delete safe.github.token;
@@ -1260,6 +1298,7 @@ function render(toTop){
   v.innerHTML=tab==='today'?viewToday():tab==='log'?viewLog():tab==='mind'?viewMind():viewTasks();
   /* tapping +1 must not fling the page back to the top */
   window.scrollTo(0,y);
+  syncBadge();
 }
 
 $('#view').addEventListener('click',e=>{
@@ -1330,11 +1369,13 @@ $('#scrim').onclick=closeSheet;
 
 /* keep the day fresh if the app sits open past the rollover */
 let lastKey=null;
-function tick(){const k=todayKey();if(lastKey&&k!==lastKey&&tab==='today')render();lastKey=k;}
+function tick(){const k=todayKey();if(lastKey&&k!==lastKey){if(tab==='today')render();else syncBadge();}lastKey=k;}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
 setInterval(tick,60000);
 
 load();lastKey=todayKey();render();
+syncBadge();
+window.addEventListener('pagehide',syncBadge);
 syncGitHub(false);syncLeet();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){syncGitHub(false);syncLeet();}});
 })();
